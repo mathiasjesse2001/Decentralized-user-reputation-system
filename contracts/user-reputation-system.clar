@@ -1,30 +1,13 @@
+(define-map user-reputation
+  { user: principal }
+  { score: int })
 
-;; title: user-reputation-system
-;; version:
-;; summary:
-;; description:
+(define-constant ERR_INVALID_ACTION -1)
+(define-constant ERR_SELF_ACTION -2)
 
-;; traits
-;;
-
-;; token definitions
-;;
-
-;; constants
-;;
-
-;; data vars
-;;
-
-;; data maps
-;;
-
-;; public functions
-;;
-
-;; read only functions
-;;
-
-;; private functions
-;;
-
+(define-public (upvote (target-user principal))
+  (begin
+    (if (is-eq tx-sender target-user)
+        (err ERR_SELF_ACTION)
+        (ok (update-user-reputation target-user 1)))
+  ))
