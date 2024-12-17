@@ -11,3 +11,11 @@
         (err ERR_SELF_ACTION)
         (ok (update-user-reputation target-user 1)))
   ))
+
+  
+(define-public (downvote (target-user principal))
+  (begin
+    (if (is-eq tx-sender target-user)
+        (err ERR_SELF_ACTION)
+        (ok (update-user-reputation target-user -1)))
+  ))
