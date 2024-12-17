@@ -22,3 +22,9 @@
 
   (define-read-only (get-reputation (user principal))
     (default-to { score: 0 } (map-get? user-reputation { user: user })))
+
+    (define-private (update-user-reputation (user principal) (delta int))
+  (let ((current-score (default-to { score: 0 } (map-get? user-reputation { user: user }))))
+    (map-set user-reputation
+      { user: user }
+      { score: (+ (get score current-score) delta) })))
