@@ -19,3 +19,6 @@
         (err ERR_SELF_ACTION)
         (ok (update-user-reputation target-user -1)))
   ))
+
+  (define-read-only (get-reputation (user principal))
+    (default-to { score: 0 } (map-get? user-reputation { user: user })))
