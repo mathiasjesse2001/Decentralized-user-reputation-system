@@ -45,3 +45,17 @@
           (if (>= score SILVER)
               "Silver"
               "Bronze")))))
+
+
+(define-private (calculate-vote-weight (voter principal))
+(let ((voter-score (get score (get-reputation voter))))
+  (if (>= voter-score 100)
+      2
+      (if (>= voter-score 50)
+          (to-int u1)
+          1))))
+(define-public (weighted-upvote (target-user principal))
+  (let ((weight (calculate-vote-weight tx-sender)))
+    (if (is-eq tx-sender target-user)
+        (err ERR_SELF_ACTION)
+        (ok (update-user-reputation target-user weight)))))
