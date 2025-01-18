@@ -59,3 +59,19 @@
     (if (is-eq tx-sender target-user)
         (err ERR_SELF_ACTION)
         (ok (update-user-reputation target-user weight)))))
+
+
+
+(define-map vote-history
+  { voter: principal, target: principal }
+  { vote-type: (string-ascii 8), timestamp: uint })
+
+(define-public (upvote-with-history (target-user principal))
+  (begin
+    (if (is-eq tx-sender target-user)
+        (err ERR_SELF_ACTION)
+        (begin
+          (map-set vote-history
+            { voter: tx-sender, target: target-user }
+            { vote-type: "upvote", timestamp: block-height })
+          (ok (update-user-reputation target-user 1))))))
