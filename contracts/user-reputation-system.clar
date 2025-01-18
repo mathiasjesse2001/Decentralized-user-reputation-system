@@ -107,3 +107,18 @@
     (if (> current-score 0)
         (ok (update-user-reputation user (* -1 DECAY_RATE)))
         (ok true))))
+
+
+(define-map user-achievements
+  { user: principal }
+  { first-upvote: bool, reach-100: bool })
+
+(define-public (check-achievements (user principal))
+  (let ((score (get score (get-reputation user))))
+    (begin
+      (if (>= score 100)
+          (map-set user-achievements 
+            { user: user }
+            { first-upvote: true, reach-100: true })
+          false)
+      (ok true))))
