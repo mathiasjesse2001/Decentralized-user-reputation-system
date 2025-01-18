@@ -28,3 +28,20 @@
     (map-set user-reputation
       { user: user }
       { score: (+ (get score current-score) delta) })))
+
+
+;; Add these constants
+(define-constant BRONZE 0)
+(define-constant SILVER 50) 
+(define-constant GOLD 100)
+(define-constant PLATINUM 200)
+
+(define-read-only (get-user-tier (user principal))
+(let ((score (get score (get-reputation user))))
+  (if (>= score PLATINUM)
+      "Platinum"
+      (if (>= score GOLD)
+          "Gold"
+          (if (>= score SILVER)
+              "Silver"
+              "Bronze")))))
