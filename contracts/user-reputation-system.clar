@@ -122,3 +122,21 @@
             { first-upvote: true, reach-100: true })
           false)
       (ok true))))
+
+
+
+(define-constant RECOVERY_COOLDOWN u1440) ;; 10 days in blocks
+(define-map recovery-timestamps
+  { user: principal }
+  { last-recovery: uint })
+
+(define-public (recover-reputation)
+  (let ((last-recovery (default-to { last-recovery: u0 }
+         (map-get? recovery-timestamps { user: tx-sender }))))
+    (if (>= (- block-height (get last-recovery last-recovery)) RECOVERY_COOLDOWN)
+        (begin
+          (map-set recovery-timestamps
+            { user: tx-sender }
+            { last-recovery: block-height })
+          (ok (update-user-reputation tx-sender 10)))
+        (err u100))))
