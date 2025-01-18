@@ -75,3 +75,24 @@
             { voter: tx-sender, target: target-user }
             { vote-type: "upvote", timestamp: block-height })
           (ok (update-user-reputation target-user 1))))))
+
+
+
+(define-constant DAILY_VOTE_LIMIT u5)
+(define-constant ERR_DAILY_LIMIT_EXCEEDED -1)
+
+(define-map daily-votes
+  { user: principal, day: uint }
+  { count: uint })
+
+(define-public (limited-upvote (target-user principal))
+  (let ((current-day (/ block-height u144))
+        (vote-count (default-to { count: u0 } 
+          (map-get? daily-votes { user: tx-sender, day: current-day }))))
+    (if (>= (get count vote-count) DAILY_VOTE_LIMIT)
+        (err ERR_DAILY_LIMIT_EXCEEDED)
+        (begin
+          (map-set daily-votes 
+            { user: tx-sender, day: current-day }
+            { count: (+ (get count vote-count) u1) })
+          (ok (update-user-reputation target-user 1))))))
