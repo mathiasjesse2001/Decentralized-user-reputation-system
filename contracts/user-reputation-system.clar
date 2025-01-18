@@ -96,3 +96,14 @@
             { user: tx-sender, day: current-day }
             { count: (+ (get count vote-count) u1) })
           (ok (update-user-reputation target-user 1))))))
+
+
+
+(define-constant DECAY_RATE 1)
+(define-constant DECAY_PERIOD 144) ;; One day in blocks
+
+(define-public (apply-reputation-decay (user principal))
+  (let ((current-score (get score (get-reputation user))))
+    (if (> current-score 0)
+        (ok (update-user-reputation user (* -1 DECAY_RATE)))
+        (ok true))))
