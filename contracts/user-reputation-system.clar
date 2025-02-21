@@ -140,3 +140,79 @@
             { last-recovery: block-height })
           (ok (update-user-reputation tx-sender 10)))
         (err u100))))
+
+
+
+(define-map staked-reputation
+  { user: principal }
+  { amount: int, lock-period: uint })
+
+(define-public (stake-reputation (amount int) (lock-blocks uint))
+  (let ((current-score (get score (get-reputation tx-sender))))
+    (if (>= current-score amount)
+        (ok (map-set staked-reputation
+          { user: tx-sender }
+          { amount: amount, lock-period: (+ block-height lock-blocks) }))
+        (err u1))))
+
+
+
+(define-map category-reputation
+  { user: principal, category: (string-ascii 20) }
+  { score: int })
+
+(define-public (category-upvote (target-user principal) (category (string-ascii 20)))
+  (ok (map-set category-reputation
+    { user: target-user, category: category }
+    { score: (+ (get score (default-to { score: 0 } 
+      (map-get? category-reputation { user: target-user, category: category }))) 1) })))
+
+
+
+
+(define-constant TRANSFER_FEE 5)
+
+(define-public (transfer-reputation (recipient principal) (amount int))
+  (let ((sender-score (get score (get-reputation tx-sender))))
+    (if (>= sender-score (+ amount TRANSFER_FEE))
+        (begin
+          (update-user-reputation tx-sender (* -1 (+ amount TRANSFER_FEE)))
+          (ok (update-user-reputation recipient amount)))
+        (err u2))))
+
+
+
+(define-map daily-challenges
+  { day: uint }
+  { description: (string-ascii 50), reward: int })
+
+(define-map user-challenge-completion
+  { user: principal, day: uint }
+  { completed: bool })
+
+(define-public (complete-challenge (day uint))
+  (let ((challenge (default-to { description: "", reward: 0 } 
+        (map-get? daily-challenges { day: day }))))
+    (ok (map-set user-challenge-completion
+      { user: tx-sender, day: day }
+      { completed: true }))))
+
+
+(define-map reputation-insurance
+  { user: principal }
+  { protected-amount: int, expiry: uint })
+
+(define-public (buy-insurance (amount int) (duration uint))
+  (ok (map-set reputation-insurance
+    { user: tx-sender }
+    { protected-amount: amount, expiry: (+ block-height duration) })))
+
+
+(define-map endorsements
+  { endorser: principal, endorsed: principal }
+  { weight: int, timestamp: uint })
+
+(define-public (endorse-user (user principal) (weight int))
+  (ok (map-set endorsements
+    { endorser: tx-sender, endorsed: user }
+    { weight: weight, timestamp: block-height })))
