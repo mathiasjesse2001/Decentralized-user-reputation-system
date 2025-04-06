@@ -369,3 +369,177 @@
                     last-claim: block-height
                 }))
             (err u1))))
+
+
+
+(define-map badge-powers
+    { badge-type: (string-ascii 20) }
+    { vote-multiplier: uint, daily-limit-bonus: uint })
+
+(define-public (initialize-badge-powers)
+    (begin
+        (map-set badge-powers 
+            { badge-type: "bronze" }
+            { vote-multiplier: u1, daily-limit-bonus: u2 })
+        (map-set badge-powers
+            { badge-type: "silver" }
+            { vote-multiplier: u2, daily-limit-bonus: u3 })
+        (map-set badge-powers
+            { badge-type: "gold" }
+            { vote-multiplier: u3, daily-limit-bonus: u5 })
+        (ok true)))
+
+(define-public (apply-badge-power (action-type (string-ascii 10)))
+    (let ((user-tier (get-user-tier tx-sender))
+          (powers (default-to { vote-multiplier: u1, daily-limit-bonus: u0 }
+                    (map-get? badge-powers { badge-type: user-tier }))))
+        (ok powers)))
+
+
+
+(define-map recovery-quests
+    { quest-id: uint }
+    { target: int, reward: int, timeframe: uint })
+
+(define-map user-quests
+    { user: principal, quest-id: uint }
+    { completed: bool, start-time: uint })
+
+(define-public (start-recovery-quest (quest-id uint))
+    (ok (map-set user-quests
+        { user: tx-sender, quest-id: quest-id }
+        { completed: false, start-time: block-height })))
+
+(define-public (complete-recovery-quest (quest-id uint))
+    (let ((quest (default-to { target: 0, reward: 0, timeframe: u0 }
+                    (map-get? recovery-quests { quest-id: quest-id }))))
+        (ok (update-user-reputation tx-sender (get reward quest)))))
+
+
+
+(define-map reputation-loans
+    { borrower: principal, lender: principal }
+    { amount: int, due-block: uint, returned: bool })
+
+(define-public (lend-reputation (borrower principal) (amount int) (duration uint))
+    (let ((lender-score (get score (get-reputation tx-sender))))
+        (if (>= lender-score amount)
+            (begin
+                (update-user-reputation tx-sender (* -1 amount))
+                (update-user-reputation borrower amount)
+                (ok (map-set reputation-loans
+                    { borrower: borrower, lender: tx-sender }
+                    { amount: amount, due-block: (+ block-height duration), returned: false })))
+            (err u1))))
+
+
+
+
+(define-map staking-pools
+    { pool-id: uint }
+    { total-staked: int, reward-rate: uint, min-stake: int })
+
+(define-map pool-stakes
+    { user: principal, pool-id: uint }
+    { amount: int, start-block: uint })
+
+(define-public (create-staking-pool (pool-id uint) (min-stake int) (reward-rate uint))
+    (ok (map-set staking-pools
+        { pool-id: pool-id }
+        { total-staked: 0, reward-rate: reward-rate, min-stake: min-stake })))
+
+(define-public (stake-in-pool (pool-id uint) (amount int))
+    (let ((pool (default-to { total-staked: 0, reward-rate: u0, min-stake: 0 }
+                    (map-get? staking-pools { pool-id: pool-id }))))
+        (if (>= amount (get min-stake pool))
+            (ok (map-set pool-stakes
+                { user: tx-sender, pool-id: pool-id }
+                { amount: amount, start-block: block-height }))
+            (err u1))))
+
+
+
+(define-map bounties
+    { bounty-id: uint }
+    { reward: int, completed: bool, deadline: uint })
+
+(define-map bounty-claims
+    { user: principal, bounty-id: uint }
+    { claimed: bool })
+
+(define-public (create-bounty (bounty-id uint) (reward int) (duration uint))
+    (ok (map-set bounties
+        { bounty-id: bounty-id }
+        { reward: reward, completed: false, deadline: (+ block-height duration) })))
+
+(define-public (claim-bounty (bounty-id uint))
+    (let ((bounty (default-to { reward: 0, completed: false, deadline: u0 }
+                    (map-get? bounties { bounty-id: bounty-id }))))
+        (ok (update-user-reputation tx-sender (get reward bounty)))))
+
+
+
+(define-map boost-events
+    { event-id: uint }
+    { multiplier: uint, duration: uint, active: bool })
+
+(define-map user-boosts
+    { user: principal, event-id: uint }
+    { participated: bool })
+
+(define-public (create-boost-event (event-id uint) (multiplier uint) (duration uint))
+    (ok (map-set boost-events
+        { event-id: event-id }
+        { multiplier: multiplier, duration: duration, active: true })))
+
+(define-public (participate-in-boost (event-id uint))
+    (let ((event (default-to { multiplier: u0, duration: u0, active: false }
+                    (map-get? boost-events { event-id: event-id }))))
+        (ok (map-set user-boosts
+            { user: tx-sender, event-id: event-id }
+            { participated: true }))))
+
+
+
+
+
+(define-map reputation-offers
+    { offer-id: uint }
+    { seller: principal, amount: int, price: uint, active: bool })
+
+(define-map user-trades
+    { user: principal }
+    { total-bought: int, total-sold: int })
+
+(define-public (create-reputation-offer (offer-id uint) (amount int) (price uint))
+    (let ((seller-score (get score (get-reputation tx-sender))))
+        (if (>= seller-score amount)
+            (ok (map-set reputation-offers
+                { offer-id: offer-id }
+                { seller: tx-sender, amount: amount, price: price, active: true }))
+            (err u1))))
+
+
+
+(define-map achievement-types
+    { achievement-id: uint }
+    { name: (string-ascii 50), required-score: int, reward: int })
+
+(define-map user-achievements-new
+    { user: principal, achievement-id: uint }
+    { unlocked: bool, unlock-time: uint })
+
+(define-public (create-achievement (achievement-id uint) (name (string-ascii 50)) (required-score int) (reward int))
+    (ok (map-set achievement-types
+        { achievement-id: achievement-id }
+        { name: name, required-score: required-score, reward: reward })))
+
+(define-public (check-achievement (achievement-id uint))
+    (let ((achievement (default-to { name: "", required-score: 0, reward: 0 }
+                        (map-get? achievement-types { achievement-id: achievement-id })))
+          (user-score (get score (get-reputation tx-sender))))
+        (if (>= user-score (get required-score achievement))
+            (ok (map-set user-achievements-new
+                { user: tx-sender, achievement-id: achievement-id }
+                { unlocked: true, unlock-time: block-height }))
+            (err u1))))
