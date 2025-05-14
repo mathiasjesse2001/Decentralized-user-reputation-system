@@ -543,3 +543,51 @@
                 { user: tx-sender, achievement-id: achievement-id }
                 { unlocked: true, unlock-time: block-height }))
             (err u1))))
+
+
+(define-map delegation-registry
+    { delegator: principal, delegate: principal }
+    { power: int, expiry: uint })
+
+(define-constant ERR_INSUFFICIENT_POWER -3)
+(define-constant ERR_EXPIRED_DELEGATION -4)
+
+(define-public (delegate-power (delegate principal) (amount int) (duration uint))
+    (let ((user-score (get score (get-reputation tx-sender))))
+        (if (>= user-score amount)
+            (ok (map-set delegation-registry
+                { delegator: tx-sender, delegate: delegate }
+                { power: amount, expiry: (+ block-height duration) }))
+            (err ERR_INSUFFICIENT_POWER))))
+
+(define-public (vote-with-delegation (target-user principal))
+    (let ((delegation (default-to { power: 0, expiry: u0 }
+            (map-get? delegation-registry { delegator: tx-sender, delegate: target-user }))))
+        (if (>= block-height (get expiry delegation))
+            (err ERR_EXPIRED_DELEGATION)
+            (ok (update-user-reputation target-user (get power delegation))))))
+
+
+
+
+(define-map insurance-pool
+    { pool-id: uint }
+    { total-staked: uint, coverage-ratio: uint, min-stake: uint })
+
+(define-map insured-users
+    { user: principal }
+    { coverage-amount: int, premium-paid: uint, expiry: uint })
+
+(define-constant COVERAGE_PERIOD u14400)
+(define-constant MIN_PREMIUM u10)
+
+
+(define-public (claim-insurance (lost-amount int))
+    (let ((insurance (default-to 
+            { coverage-amount: 0, premium-paid: u0, expiry: u0 }
+            (map-get? insured-users { user: tx-sender }))))
+        (if (and 
+            (<= lost-amount (get coverage-amount insurance))
+            (< block-height (get expiry insurance)))
+            (ok (update-user-reputation tx-sender lost-amount))
+            (err u3))))
