@@ -591,3 +591,69 @@
             (< block-height (get expiry insurance)))
             (ok (update-user-reputation tx-sender lost-amount))
             (err u3))))
+
+
+(define-map multiplier-zones
+    { zone-id: uint }
+    {
+        category: (string-ascii 20),
+        multiplier: uint,
+        start-block: uint,
+        end-block: uint,
+        min-reputation: int
+    })
+
+(define-map zone-participation
+    { user: principal, zone-id: uint }
+    { actions: uint, total-gained: int })
+
+(define-constant ZONE_ACTIVATION_COST 10)
+(define-constant MAX_MULTIPLIER u5)
+
+(define-public (create-multiplier-zone 
+    (zone-id uint) 
+    (category (string-ascii 20)) 
+    (multiplier uint) 
+    (duration uint) 
+    (min-reputation int))
+    (let ((creator-score (get score (get-reputation tx-sender))))
+        (if (and 
+            (>= creator-score ZONE_ACTIVATION_COST)
+            (<= multiplier MAX_MULTIPLIER))
+            (ok (map-set multiplier-zones
+                { zone-id: zone-id }
+                {
+                    category: category,
+                    multiplier: multiplier,
+                    start-block: block-height,
+                    end-block: (+ block-height duration),
+                    min-reputation: min-reputation
+                }))
+            (err u4))))
+
+(define-public (participate-in-zone (zone-id uint) (action-score int))
+    (let ((zone (default-to 
+            { 
+                category: "", 
+                multiplier: u0, 
+                start-block: u0, 
+                end-block: u0, 
+                min-reputation: 0 
+            }
+            (map-get? multiplier-zones { zone-id: zone-id })))
+          (user-score (get score (get-reputation tx-sender))))
+        (if (and
+            (>= block-height (get start-block zone))
+            (<= block-height (get end-block zone))
+            (>= user-score (get min-reputation zone)))
+            (let ((multiplied-score (* action-score (to-int (get multiplier zone)))))
+                (begin
+                    (map-set zone-participation
+                        { user: tx-sender, zone-id: zone-id }
+                        { 
+                            actions: (+ u1 (get actions (default-to { actions: u0, total-gained: 0 }
+                                (map-get? zone-participation { user: tx-sender, zone-id: zone-id })))),
+                            total-gained: multiplied-score 
+                        })
+                    (ok (update-user-reputation tx-sender multiplied-score))))
+            (err u5))))
