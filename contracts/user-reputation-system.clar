@@ -657,3 +657,105 @@
                         })
                     (ok (update-user-reputation tx-sender multiplied-score))))
             (err u5))))
+
+
+(define-map reputation-snapshots
+  { user: principal, block-height: uint }
+  { score: int, tier: (string-ascii 20) })
+
+(define-map global-snapshots
+  { block-height: uint }
+  { total-users: uint, average-score: int, top-user: principal })
+
+(define-map snapshot-registry
+  { snapshot-id: uint }
+  { block-height: uint, description: (string-ascii 100), creator: principal })
+
+(define-data-var next-snapshot-id uint u1)
+(define-data-var last-global-snapshot uint u0)
+
+(define-constant SNAPSHOT_COOLDOWN u144)
+(define-constant ERR_SNAPSHOT_TOO_RECENT -10)
+(define-constant ERR_SNAPSHOT_NOT_FOUND -11)
+
+(define-public (create-reputation-snapshot (description (string-ascii 100)))
+  (let ((current-snapshot-id (var-get next-snapshot-id))
+        (current-block block-height)
+        (user-score (get score (get-reputation tx-sender)))
+        (user-tier (get-user-tier tx-sender)))
+    (begin
+      (map-set reputation-snapshots
+        { user: tx-sender, block-height: current-block }
+        { score: user-score, tier: user-tier })
+      (map-set snapshot-registry
+        { snapshot-id: current-snapshot-id }
+        { block-height: current-block, description: description, creator: tx-sender })
+      (var-set next-snapshot-id (+ current-snapshot-id u1))
+      (ok current-snapshot-id))))
+
+(define-public (create-global-snapshot)
+  (let ((last-snapshot (var-get last-global-snapshot))
+        (current-block block-height))
+    (if (>= (- current-block last-snapshot) SNAPSHOT_COOLDOWN)
+        (let ((top-user-data (get-top-user)))
+          (begin
+            (map-set global-snapshots
+              { block-height: current-block }
+              { 
+                total-users: u1,
+                average-score: (get score top-user-data),
+                top-user: (get user top-user-data)
+              })
+            (var-set last-global-snapshot current-block)
+            (ok current-block)))
+        (err ERR_SNAPSHOT_TOO_RECENT))))
+
+(define-read-only (get-reputation-at-block (user principal) (target-block uint))
+  (let ((snapshot-data (map-get? reputation-snapshots { user: user, block-height: target-block })))
+    (match snapshot-data
+      found-snapshot (ok found-snapshot)
+      (err ERR_SNAPSHOT_NOT_FOUND))))
+
+(define-read-only (get-reputation-at-snapshot (user principal) (snapshot-id uint))
+  (let ((snapshot-info (map-get? snapshot-registry { snapshot-id: snapshot-id })))
+    (match snapshot-info
+      snapshot-details 
+        (let ((target-block (get block-height snapshot-details)))
+          (get-reputation-at-block user target-block))
+      (err ERR_SNAPSHOT_NOT_FOUND))))
+
+(define-read-only (get-global-snapshot (target-block uint))
+  (default-to 
+    { total-users: u0, average-score: 0, top-user: tx-sender }
+    (map-get? global-snapshots { block-height: target-block })))
+
+(define-read-only (get-snapshot-info (snapshot-id uint))
+  (map-get? snapshot-registry { snapshot-id: snapshot-id }))
+
+(define-public (batch-snapshot-users (users (list 10 principal)))
+  (let ((current-block block-height))
+    (ok (map create-user-snapshot-at-block users))))
+
+(define-private (create-user-snapshot-at-block (user principal))
+  (let ((user-score (get score (get-reputation user)))
+        (user-tier (get-user-tier user)))
+    (map-set reputation-snapshots
+      { user: user, block-height: block-height }
+      { score: user-score, tier: user-tier })))
+
+(define-read-only (compare-reputation-change (user principal) (start-block uint) (end-block uint))
+  (let ((start-snapshot (map-get? reputation-snapshots { user: user, block-height: start-block }))
+        (end-snapshot (map-get? reputation-snapshots { user: user, block-height: end-block })))
+    (match start-snapshot
+      start-data
+        (match end-snapshot
+          end-data
+            (ok {
+              start-score: (get score start-data),
+              end-score: (get score end-data),
+              change: (- (get score end-data) (get score start-data)),
+              start-tier: (get tier start-data),
+              end-tier: (get tier end-data)
+            })
+          (err ERR_SNAPSHOT_NOT_FOUND))
+      (err ERR_SNAPSHOT_NOT_FOUND))))
