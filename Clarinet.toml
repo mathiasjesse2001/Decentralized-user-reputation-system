@@ -5,6 +5,11 @@ authors = []
 telemetry = true
 cache_dir = '.\.cache'
 requirements = []
+[contracts.peer-review-circles]
+path = 'contracts/peer-review-circles.clar'
+clarity_version = 3
+epoch = 3.1
+
 [contracts.user-reputation-system]
 path = 'contracts/user-reputation-system.clar'
 clarity_version = 2
