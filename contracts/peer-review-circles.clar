@@ -123,40 +123,6 @@
           (err ERR_NOT_MEMBER))
       (err ERR_INVALID_CIRCLE))))
 
-    ;;   TODO: Implement the review submission logic
-
-;; (define-public (submit-review (submission-id uint) (score int) (feedback (string-ascii 200)))
-;;   (let ((submission (map-get? submissions { submission-id: submission-id })))
-;;     (match submission
-;;       submission-data
-;;       none
-;;         (let ((existing-review (map-get? submission-reviews { submission-id: submission-id, reviewer: tx-sender }))
-;;             ;;   (circle-id (get circle-id submission-data))
-;;               (membership (map-get? circle-membership { user: tx-sender, circle-id: u1 })))
-;;           (match membership
-;;             member-data
-;;             none
-;;               (if (and
-;;                 (is-none existing-review)
-;;                 (is-eq (get status submission-data) "pending")
-;;                 (not (is-eq tx-sender (get submitter submission-data))))
-;;                 (let ((new-reviews-count (+ (get reviews-received submission-data) u1)))
-;;                   (begin
-;;                     (map-set submission-reviews
-;;                       { submission-id: submission-id, reviewer: tx-sender }
-;;                       { score: score, feedback: feedback, submitted-at: stacks-block-height })
-;;                     (map-set submissions
-;;                       { submission-id: submission-id }
-;;                       (merge submission-data { reviews-received: new-reviews-count }))
-;;                     (map-set circle-membership
-;;                       { user: tx-sender, circle-id: circle-id }
-;;                       (merge member-data { reviews-given: (+ (get reviews-given member-data) u1) }))
-;;                     (if (>= new-reviews-count (get reviews-needed submission-data))
-;;                       (unwrap! (finalize-submission submission-id) (err ERR_ALREADY_REVIEWED))
-;;                       (ok true)))))
-;;                 (err ERR_ALREADY_REVIEWED))
-;;             (err ERR_NOT_MEMBER)))
-;;       (err ERR_SUBMISSION_CLOSED))))
 (define-private (finalize-submission (submission-id uint))
   (let ((submission (unwrap! (map-get? submissions { submission-id: submission-id }) (err u1))))
     (let ((average-score (calculate-average-score submission-id))
