@@ -19,6 +19,16 @@ epoch = 2.5
 path = 'contracts/reputation-governance.clar'
 clarity_version = 3
 epoch = 3.1
+
+[contracts.reputation-recovery]
+path = 'contracts/reputation-recovery.clar'
+clarity_version = 3
+epoch = 3.1
+
+[contracts.reputation-milestones]
+path = 'contracts/reputation-milestones.clar'
+clarity_version = 3
+epoch = 3.1
 [repl.analysis]
 passes = ['check_checker']
 

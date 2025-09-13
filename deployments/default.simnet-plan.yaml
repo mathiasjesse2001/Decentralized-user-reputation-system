@@ -67,4 +67,14 @@ plan:
             emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
             path: "contracts\\reputation-governance.clar"
             clarity-version: 3
+        - emulated-contract-publish:
+            contract-name: reputation-milestones
+            emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            path: "contracts\\reputation-milestones.clar"
+            clarity-version: 3
+        - emulated-contract-publish:
+            contract-name: reputation-recovery
+            emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            path: "contracts\\reputation-recovery.clar"
+            clarity-version: 3
       epoch: "3.1"
